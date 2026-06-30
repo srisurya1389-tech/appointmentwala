@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>{% block title %}AppointEase{% endblock %}</title>
+  {% load static %}
+  <link rel="stylesheet" href="{% static 'css/style.css' %}"/>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Playfair+Display:wght@700&display=swap" rel="stylesheet"/>
+</head>
+<body class="page-body">
+
+<nav class="navbar">
+  <div class="nav-inner">
+    <a href="{% url 'home' %}" class="nav-brand"><span class="brand-dot"></span>AppointEase</a>
+    <ul class="nav-menu">
+      <li><a href="{% url 'home' %}" class="nav-link {% if request.resolver_match.url_name == 'home' %}active{% endif %}">Home</a></li>
+      <li><a href="{% url 'booking_calendar' %}" class="nav-link {% if request.resolver_match.url_name == 'booking_calendar' %}active{% endif %}">Book Appointment</a></li>
+      <li><a href="{% url 'my_appointments' %}" class="nav-link {% if request.resolver_match.url_name == 'my_appointments' %}active{% endif %}">My Appointments</a></li>
+      {% if user.is_authenticated %}
+      <li><a href="{% url 'dashboard' %}" class="nav-link {% if 'dashboard' in request.resolver_match.url_name %}active{% endif %}">Dashboard</a></li>
+      <li>
+        <form method="post" action="{% url 'logout' %}" style="display:inline">
+          {% csrf_token %}
+          <button type="submit" class="btn-nav-logout">Logout</button>
+        </form>
+      </li>
+      {% else %}
+      <li><a href="{% url 'login' %}" class="btn-nav-login">Provider Login</a></li>
+      {% endif %}
+    </ul>
+    <button class="nav-hamburger" onclick="this.nextElementSibling||0;document.querySelector('.nav-menu').classList.toggle('show')">☰</button>
+  </div>
+</nav>
+
+{% if messages %}
+<div class="toast-container">
+  {% for m in messages %}
+  <div class="toast toast-{{ m.tags }}">
+    <span>{% if m.tags == 'success' %}✓{% elif m.tags == 'error' %}✕{% else %}ℹ{% endif %}</span>
+    {{ m }}
+    <button onclick="this.parentElement.remove()">×</button>
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+
+<main class="page-main">{% block content %}{% endblock %}</main>
+
+<footer class="site-footer">
+  <div class="footer-inner">
+    <span class="footer-brand"><span class="brand-dot"></span>AppointEase</span>
+    <span class="footer-copy">© 2025 All rights reserved</span>
+  </div>
+</footer>
+
+</body>
+</html>

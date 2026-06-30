@@ -1,0 +1,60 @@
+{% extends 'booking/base.html' %}
+{% block title %}My Appointments — AppointEase{% endblock %}
+{% block content %}
+
+<div class="page-banner">
+  <div class="container">
+    <span class="eyebrow">Customer Dashboard</span>
+    <h1 class="page-h1">My Appointments</h1>
+    <p class="page-sub">Enter the email you booked with to view or cancel your appointments.</p>
+  </div>
+</div>
+
+<section class="section">
+  <div class="form-wrap">
+
+    <!-- LOOKUP FORM -->
+    <form method="POST" class="lookup-form">
+      {% csrf_token %}
+      <input type="email" name="email" class="form-input" placeholder="your@email.com"
+             value="{{ searched_email|default:'' }}" required>
+      <button type="submit" class="btn btn-primary">Find My Appointments</button>
+    </form>
+
+    <!-- RESULTS -->
+    {% if appointments %}
+      <div class="my-appt-list">
+        {% for appt in appointments %}
+        <div class="my-appt-card">
+          <div class="mac-top">
+            <div>
+              <p class="mac-date">{{ appt.slot.date|date:"l, d F Y" }}</p>
+              <p class="mac-time">{{ appt.slot.start_time|time:"g:i A" }} – {{ appt.slot.end_time|time:"g:i A" }}</p>
+            </div>
+            <span class="badge badge-{{ appt.status }}">{{ appt.get_status_display }}</span>
+          </div>
+          <div class="mac-body">
+            <p><strong>Name:</strong> {{ appt.client_name }}</p>
+            <p><strong>Phone:</strong> {{ appt.client_phone }}</p>
+            {% if appt.message %}<p><strong>Notes:</strong> {{ appt.message }}</p>{% endif %}
+          </div>
+          {% if appt.status != 'cancelled' and appt.slot.date >= today %}
+          <form method="POST" action="{% url 'cancel_appointment' appt.id %}"
+                onsubmit="return confirm('Cancel this appointment?')" class="mac-cancel-form">
+            {% csrf_token %}
+            <button type="submit" class="btn-delete">Cancel Appointment</button>
+          </form>
+          {% endif %}
+        </div>
+        {% endfor %}
+      </div>
+    {% elif searched_email %}
+      <div class="empty-box small">
+        <p>📭 No appointments found for <strong>{{ searched_email }}</strong></p>
+        <a href="{% url 'booking_calendar' %}" class="btn btn-outline">Book an Appointment</a>
+      </div>
+    {% endif %}
+
+  </div>
+</section>
+{% endblock %}

@@ -1,0 +1,27 @@
+{% extends 'booking/base.html' %}
+{% block title %}Provider Login — AppointEase{% endblock %}
+{% block content %}
+<section class="section">
+  <div class="container" style="max-width:420px">
+    <div class="login-card">
+      <div class="login-top">
+        <div class="login-logo"><span class="brand-dot big"></span></div>
+        <h1>Provider Login</h1>
+        <p>Sign in to manage appointments</p>
+      </div>
+      <form method="POST" class="appt-form">
+        {% csrf_token %}
+        {% for field in form %}
+        <div class="fld-group">
+          <label class="fld-label">{{ field.label }}</label>
+          {{ field }}
+          {% if field.errors %}<p class="fld-err">{{ field.errors.0 }}</p>{% endif %}
+        </div>
+        {% endfor %}
+        {% if form.non_field_errors %}<p class="fld-err">{{ form.non_field_errors.0 }}</p>{% endif %}
+        <button type="submit" class="btn btn-primary" style="width:100%;margin-top:8px">Login →</button>
+      </form>
+    </div>
+  </div>
+</section>
+{% endblock %}

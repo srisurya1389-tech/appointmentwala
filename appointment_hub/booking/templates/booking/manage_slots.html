@@ -1,0 +1,647 @@
+{% extends 'booking/base.html' %}
+{% block title %}Manage Slots — AppointEase{% endblock %}
+{% block content %}
+
+<div class="dash-wrapper">
+  <aside class="dash-sidebar">
+    <div class="sidebar-brand"><span class="brand-dot"></span> AppointEase</div>
+    <nav class="sidebar-nav">
+      <a href="{% url 'dashboard' %}"    class="snav-item">📊 Dashboard</a>
+      <a href="{% url 'manage_slots' %}" class="snav-item active">🗓️ Manage Slots</a>
+      <a href="{% url 'settings' %}"     class="snav-item">⚙️ Settings</a>
+      <a href="{% url 'home' %}"         class="snav-item">🏠 View Site</a>
+    </nav>
+    <div class="sidebar-footer">
+      <form method="post" action="{% url 'logout' %}">{% csrf_token %}
+        <button type="submit" class="snav-logout">← Logout</button>
+      </form>
+    </div>
+  </aside>
+
+  <div class="dash-main">
+    <div class="dash-topbar">
+      <div>
+        <h1 class="dash-title">Manage Availability</h1>
+        <p class="dash-subtitle">Weekly defaults · Color coding · Drag to reorder · Bulk scheduling</p>
+      </div>
+      <a href="{% url 'dashboard' %}" class="btn btn-outline">← Dashboard</a>
+    </div>
+
+    <div class="ms-card">
+      <div class="ms-card-head">
+        <div>
+          <h2 class="ms-card-title">📆 Weekly Default Slots</h2>
+          <p class="ms-card-sub">Today is <strong>{{ today|date:"l" }}</strong>. Drag cards to reorder within a day.</p>
+        </div>
+        <div class="ms-head-actions">
+          <button class="view-toggle-btn active" id="btn-tabs"  onclick="setView('tabs')" type="button">📋 Tab View</button>
+          <button class="view-toggle-btn"        id="btn-grid"  onclick="setView('grid')" type="button">📊 Week Grid</button>
+        </div>
+      </div>
+
+      <!-- Schedule Full Week bar -->
+      <div class="schedule-week-bar">
+        <span class="swb-label">⚡ Schedule Full Week</span>
+        <form method="POST" class="swb-form">
+          {% csrf_token %}
+          <input type="hidden" name="action" value="schedule_week">
+          <label class="swb-field-label">Week starting Monday:</label>
+          <input type="date" name="week_start" value="{{ next_monday|date:'Y-m-d' }}" class="form-input swb-date" id="week-start-input">
+          <button type="submit" class="btn btn-primary" style="font-size:13px;padding:8px 18px;">Schedule All Days →</button>
+        </form>
+      </div>
+
+      <!-- ── TAB VIEW ── -->
+      <div id="view-tabs">
+        <div class="day-tabbar">
+          {% for day_num, day_name, ws_list in days_with_slots %}
+          <button class="day-tab {% if day_num == today_dow %}day-tab--today{% endif %}"
+                  id="dtab-{{ day_num }}" onclick="switchDay({{ day_num }})" type="button">
+            <span class="day-short">{{ day_name|slice:":3" }}</span>
+            <span class="day-count" id="cnt-{{ day_num }}">{{ ws_list|length }}</span>
+            {% if day_num == today_dow %}<span class="today-pip"></span>{% endif %}
+          </button>
+          {% endfor %}
+        </div>
+
+        {% for day_num, day_name, ws_list in days_with_slots %}
+        <div class="day-panel" id="dpanel-{{ day_num }}">
+          <div class="day-panel-bar">
+            <span class="day-panel-label">
+              {% if day_num == today_dow %}<span class="today-badge">Today</span>{% endif %}
+              {{ day_name }} Slots
+            </span>
+            <form method="POST" class="apply-form">
+              {% csrf_token %}
+              <input type="hidden" name="action"      value="apply_weekly">
+              <input type="hidden" name="day_of_week" value="{{ day_num }}">
+              <input type="date" name="date" class="form-input apply-date-input" required>
+              <button type="submit" class="btn btn-primary" style="font-size:13px;padding:7px 16px;">Apply to Date →</button>
+            </form>
+          </div>
+
+          <!-- Draggable slot cards -->
+          <div class="slot-cards-grid" id="sortable-{{ day_num }}" data-day="{{ day_num }}">
+            {% for ws in ws_list %}
+            <div class="slot-card {% if not ws.is_active %}slot-card--inactive{% endif %}"
+                 data-id="{{ ws.id }}" style="border-top: 3px solid {{ ws.color }};">
+              {% if edit_wid == ws.id|stringformat:"s" %}
+              <form method="POST" class="sc-edit-form">
+                {% csrf_token %}
+                <input type="hidden" name="action"    value="edit_weekly">
+                <input type="hidden" name="weekly_id" value="{{ ws.id }}">
+                <div class="sc-edit-row">
+                  <div class="sc-field">
+                    <label class="sc-label">Name</label>
+                    <input type="text" name="name" value="{{ ws.name }}" class="form-input sc-input" required>
+                  </div>
+                  <div class="sc-field">
+                    <label class="sc-label">Start</label>
+                    <input type="time" name="start_time" value="{{ ws.start_time|time:'H:i' }}" class="form-input sc-input" required>
+                  </div>
+                  <div class="sc-field">
+                    <label class="sc-label">End</label>
+                    <input type="time" name="end_time" value="{{ ws.end_time|time:'H:i' }}" class="form-input sc-input" required>
+                  </div>
+                  <div class="sc-field">
+                    <label class="sc-label">Active</label>
+                    <label class="toggle-sw"><input type="checkbox" name="is_active" {% if ws.is_active %}checked{% endif %}><span class="toggle-track"></span></label>
+                  </div>
+                </div>
+                <div class="sc-color-row">
+                  <span class="sc-label">Color</span>
+                  <div class="color-picker" data-target="color-w-{{ ws.id }}">
+                    {% for hex, cname in slot_colors %}
+                    <span class="cp-dot {% if hex == ws.color %}cp-dot--active{% endif %}"
+                          style="background:{{ hex }}" data-val="{{ hex }}" title="{{ cname }}"></span>
+                    {% endfor %}
+                  </div>
+                  <input type="hidden" name="color" id="color-w-{{ ws.id }}" value="{{ ws.color }}">
+                </div>
+                <div class="sc-edit-actions">
+                  <button type="submit" class="btn btn-primary" style="font-size:13px;padding:6px 18px;">Save</button>
+                  <a href="{% url 'manage_slots' %}" class="btn btn-outline" style="font-size:13px;padding:6px 14px;">Cancel</a>
+                </div>
+              </form>
+              {% else %}
+              <div class="sc-drag-handle" title="Drag to reorder">⠿</div>
+              <div class="sc-times">
+                <span class="sc-dot" style="background:{{ ws.color }}"></span>
+                <span class="sc-start">{{ ws.start_time|time:"g:i A" }}</span>
+                <span class="sc-arrow">→</span>
+                <span class="sc-end">{{ ws.end_time|time:"g:i A" }}</span>
+              </div>
+              <div class="sc-name">{{ ws.name }}</div>
+              {% if not ws.is_active %}<span class="sc-inactive-tag">Inactive</span>{% endif %}
+              <div class="sc-actions">
+                <a href="?edit_w={{ ws.id }}" class="sc-btn-edit">✏️ Edit</a>
+                <form method="POST" onsubmit="return confirm('Delete?')" style="display:inline;">
+                  {% csrf_token %}
+                  <input type="hidden" name="action"    value="delete_weekly">
+                  <input type="hidden" name="weekly_id" value="{{ ws.id }}">
+                  <button type="submit" class="sc-btn-del">🗑</button>
+                </form>
+              </div>
+              {% endif %}
+            </div>
+            {% endfor %}
+
+            <!-- Add new slot card -->
+            <div class="slot-card slot-card--add">
+              <form method="POST">
+                {% csrf_token %}
+                <input type="hidden" name="action"      value="add_weekly">
+                <input type="hidden" name="day_of_week" value="{{ day_num }}">
+                <div class="sc-add-title">+ New Slot</div>
+                <div class="sc-add-fields">
+                  <input type="text" name="name" class="form-input sc-input" placeholder="Name">
+                  <input type="time" name="start_time" class="form-input sc-input">
+                  <input type="time" name="end_time"   class="form-input sc-input">
+                </div>
+                <div class="sc-color-row" style="margin-top:8px;">
+                  <span class="sc-label">Color</span>
+                  <div class="color-picker" data-target="color-new-{{ day_num }}">
+                    {% for hex, cname in slot_colors %}
+                    <span class="cp-dot {% if forloop.first %}cp-dot--active{% endif %}"
+                          style="background:{{ hex }}" data-val="{{ hex }}" title="{{ cname }}"></span>
+                    {% endfor %}
+                  </div>
+                  <input type="hidden" name="color" id="color-new-{{ day_num }}" value="#3b82f6">
+                </div>
+                <button type="submit" class="btn btn-primary" style="width:100%;font-size:13px;margin-top:10px;">Add Slot</button>
+              </form>
+            </div>
+          </div><!-- /sortable -->
+        </div><!-- /day-panel -->
+        {% endfor %}
+      </div><!-- /view-tabs -->
+
+      <!-- ── WEEK GRID VIEW ── -->
+      <div id="view-grid" style="display:none;">
+        <div class="week-grid">
+          {% for day_num, day_name, ws_list in days_with_slots %}
+          <div class="wg-col {% if day_num == today_dow %}wg-col--today{% endif %}">
+            <div class="wg-col-head">
+              <span class="wg-day-name">{{ day_name|slice:":3" }}</span>
+              {% if day_num == today_dow %}<span class="today-badge" style="font-size:10px;">Today</span>{% endif %}
+              <span class="wg-count">{{ ws_list|length }}</span>
+            </div>
+            <div class="wg-slots">
+              {% for ws in ws_list %}
+              <div class="wg-slot {% if not ws.is_active %}wg-slot--inactive{% endif %}"
+                   style="border-left:3px solid {{ ws.color }}; background: {{ ws.color }}18;">
+                <div class="wg-slot-time">{{ ws.start_time|time:"g:i A" }}</div>
+                <div class="wg-slot-name">{{ ws.name }}</div>
+              </div>
+              {% empty %}
+              <div class="wg-empty">No slots</div>
+              {% endfor %}
+            </div>
+            <a href="#" onclick="setView('tabs');switchDay({{ day_num }});return false;"
+               class="wg-edit-link">+ Add / Edit</a>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+
+    <div class="ms-card">
+      <div class="ms-card-head">
+        <div>
+          <h2 class="ms-card-title">🧩 Slot Templates</h2>
+          <p class="ms-card-sub">Reusable templates you can schedule to any specific date</p>
+        </div>
+      </div>
+      <form method="POST" class="inline-add-form">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="add_template">
+        <div class="slot-form-row" style="flex-wrap:wrap;gap:12px;align-items:flex-end;">
+          <div class="fld-group">
+            <label class="fld-label">Name</label>
+            <input type="text" name="name" class="form-input" placeholder="e.g. Morning" required>
+          </div>
+          <div class="fld-group">
+            <label class="fld-label">Start</label>
+            <input type="time" name="start_time" class="form-input" required>
+          </div>
+          <div class="fld-group">
+            <label class="fld-label">End</label>
+            <input type="time" name="end_time" class="form-input" required>
+          </div>
+          <div class="fld-group">
+            <label class="fld-label">Color</label>
+            <div class="color-picker" data-target="color-tmpl-new">
+              {% for hex, cname in slot_colors %}
+              <span class="cp-dot {% if forloop.first %}cp-dot--active{% endif %}"
+                    style="background:{{ hex }}" data-val="{{ hex }}" title="{{ cname }}"></span>
+              {% endfor %}
+            </div>
+            <input type="hidden" name="color" id="color-tmpl-new" value="#3b82f6">
+          </div>
+          <div class="fld-group fld-btn-align">
+            <button type="submit" class="btn btn-primary">+ Add</button>
+          </div>
+        </div>
+      </form>
+
+      {% if templates %}
+      <div class="table-scroll" style="margin-top:16px;">
+        <table class="data-table">
+          <thead><tr><th>Color</th><th>Name</th><th>Start</th><th>End</th><th>Status</th><th>Actions</th></tr></thead>
+          <tbody>
+            {% for tmpl in templates %}
+            {% if edit_tmpl.id == tmpl.id %}
+            <tr style="background:#eff6ff;">
+              <form method="POST">
+                {% csrf_token %}
+                <input type="hidden" name="action"      value="edit_template">
+                <input type="hidden" name="template_id" value="{{ tmpl.id }}">
+                <td>
+                  <div class="color-picker" data-target="color-tmpl-{{ tmpl.id }}">
+                    {% for hex, cname in slot_colors %}
+                    <span class="cp-dot {% if hex == tmpl.color %}cp-dot--active{% endif %}"
+                          style="background:{{ hex }}" data-val="{{ hex }}" title="{{ cname }}"></span>
+                    {% endfor %}
+                  </div>
+                  <input type="hidden" name="color" id="color-tmpl-{{ tmpl.id }}" value="{{ tmpl.color }}">
+                </td>
+                <td><input type="text" name="name" value="{{ tmpl.name }}" class="form-input" style="min-width:130px;" required></td>
+                <td><input type="time" name="start_time" value="{{ tmpl.start_time|time:'H:i' }}" class="form-input" required></td>
+                <td><input type="time" name="end_time" value="{{ tmpl.end_time|time:'H:i' }}" class="form-input" required></td>
+                <td><label class="toggle-sw"><input type="checkbox" name="is_active" {% if tmpl.is_active %}checked{% endif %}><span class="toggle-track"></span></label></td>
+                <td style="display:flex;gap:8px;">
+                  <button type="submit" class="btn btn-primary" style="padding:5px 14px;font-size:13px;">Save</button>
+                  <a href="{% url 'manage_slots' %}" class="btn btn-outline" style="padding:5px 12px;font-size:13px;">Cancel</a>
+                </td>
+              </form>
+            </tr>
+            {% else %}
+            <tr>
+              <td><span class="color-swatch" style="background:{{ tmpl.color }}"></span></td>
+              <td><strong>{{ tmpl.name }}</strong></td>
+              <td>{{ tmpl.start_time|time:"g:i A" }}</td>
+              <td>{{ tmpl.end_time|time:"g:i A" }}</td>
+              <td>
+                {% if tmpl.is_active %}<span class="badge badge-available">Active</span>
+                {% else %}<span class="badge" style="background:#f3f4f6;color:#6b7280;border:1px solid #d1d5db;">Inactive</span>{% endif %}
+              </td>
+              <td style="display:flex;gap:8px;align-items:center;">
+                <a href="?edit={{ tmpl.id }}" class="btn btn-outline" style="padding:5px 12px;font-size:13px;">✏️ Edit</a>
+                <form method="POST" onsubmit="return confirm('Delete this template?')">
+                  {% csrf_token %}
+                  <input type="hidden" name="action" value="delete_template">
+                  <input type="hidden" name="template_id" value="{{ tmpl.id }}">
+                  <button type="submit" class="btn-delete">🗑</button>
+                </form>
+              </td>
+            </tr>
+            {% endif %}
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% else %}
+      <div class="empty-box small" style="margin-top:16px;"><p>No templates yet. Add one above.</p></div>
+      {% endif %}
+    </div>
+
+    <div class="ms-card">
+      <div class="ms-card-head">
+        <h2 class="ms-card-title">📅 Schedule Templates to a Date</h2>
+        <p class="ms-card-sub">Pick a date and choose which templates to open for booking</p>
+      </div>
+      {% if templates %}
+      <form method="POST">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="schedule">
+        <div class="slot-form-row" style="align-items:flex-start;flex-wrap:wrap;gap:20px;">
+          <div class="fld-group">
+            <label class="fld-label">Date</label>
+            <input type="date" name="date" id="sched-date" class="form-input" required>
+          </div>
+          <div class="fld-group" style="flex:1;min-width:260px;">
+            <label class="fld-label">Select Templates</label>
+            <div class="tmpl-grid">
+              {% for tmpl in templates %}{% if tmpl.is_active %}
+              <label class="tmpl-card">
+                <input type="checkbox" name="template_ids" value="{{ tmpl.id }}">
+                <span class="tmpl-card-inner" style="border-top:3px solid {{ tmpl.color }};">
+                  <span class="tmpl-card-name">{{ tmpl.name }}</span>
+                  <span class="tmpl-card-time">{{ tmpl.start_time|time:"g:i A" }} – {{ tmpl.end_time|time:"g:i A" }}</span>
+                </span>
+              </label>
+              {% endif %}{% endfor %}
+            </div>
+          </div>
+          <div class="fld-group fld-btn-align">
+            <button type="submit" class="btn btn-primary">Schedule →</button>
+          </div>
+        </div>
+      </form>
+      {% else %}
+      <div class="empty-box small"><p>Add slot templates in Section 2 first.</p></div>
+      {% endif %}
+    </div>
+
+    <div class="ms-card">
+      <div class="ms-card-head">
+        <h2 class="ms-card-title">🔥 Booking Density</h2>
+        <p class="ms-card-sub">Darker = more bookings filled. Hover a cell for details.</p>
+      </div>
+      <div class="heatmap-wrap">
+        <div class="hm-day-labels">
+          <span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span><span>Sun</span>
+        </div>
+        <div class="hm-grid">
+          {% for week in heatmap_weeks %}
+          <div class="hm-week">
+            {% for cell in week %}
+            <div class="hm-cell
+              {% if cell.is_today %}hm-today{% elif cell.is_past %}hm-past{% endif %}
+              {% if cell.total == 0 %}hm-0
+              {% elif cell.pct == 100 %}hm-100
+              {% elif cell.pct >= 67 %}hm-67
+              {% elif cell.pct >= 34 %}hm-34
+              {% else %}hm-1{% endif %}"
+              title="{{ cell.date|date:'D, d M' }} — {{ cell.booked }}/{{ cell.total }} booked{% if cell.total == 0 %} (no slots){% endif %}">
+            </div>
+            {% endfor %}
+          </div>
+          {% endfor %}
+        </div>
+        <div class="hm-legend">
+          <span>Less</span>
+          <span class="hm-leg-cell hm-0"></span>
+          <span class="hm-leg-cell hm-1"></span>
+          <span class="hm-leg-cell hm-34"></span>
+          <span class="hm-leg-cell hm-67"></span>
+          <span class="hm-leg-cell hm-100"></span>
+          <span>More</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="ms-card">
+      <div class="ms-card-head">
+        <div>
+          <h2 class="ms-card-title">All Scheduled Slots</h2>
+        </div>
+        <form method="POST" onsubmit="return confirm('Copy all slots from this week to next week?')">
+          {% csrf_token %}
+          <input type="hidden" name="action" value="copy_next_week">
+          <button type="submit" class="btn btn-outline" style="font-size:13px;">
+            📋 Copy This Week → Next Week
+          </button>
+        </form>
+      </div>
+      {% if grouped_slots %}
+        {% for date, slots in grouped_slots.items %}
+        <div class="slot-date-group">
+          <div class="slot-date-label">
+            {{ date|date:"l, d F Y" }}
+            {% if date == today %}<span class="today-tag">Today</span>{% endif %}
+            {% if date < today %}<span class="today-tag" style="background:#fee2e2;color:#991b1b;">Past</span>{% endif %}
+          </div>
+          <div class="table-scroll">
+            <table class="data-table">
+              <thead><tr><th>Start</th><th>End</th><th>Status</th><th>Action</th></tr></thead>
+              <tbody>
+                {% for slot in slots %}
+                <tr>
+                  <td><strong>{{ slot.start_time|time:"g:i A" }}</strong></td>
+                  <td>{{ slot.end_time|time:"g:i A" }}</td>
+                  <td>
+                    {% if slot.is_booked %}<span class="badge badge-confirmed">Booked</span>
+                    {% else %}<span class="badge badge-available">Available</span>{% endif %}
+                  </td>
+                  <td>
+                    {% if not slot.is_booked %}
+                    <form method="POST" onsubmit="return confirm('Delete this slot?')">
+                      {% csrf_token %}
+                      <input type="hidden" name="action"  value="delete">
+                      <input type="hidden" name="slot_id" value="{{ slot.id }}">
+                      <button type="submit" class="btn-delete">🗑 Delete</button>
+                    </form>
+                    {% else %}<span class="cannot-delete">Cannot delete (booked)</span>{% endif %}
+                  </td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+        {% endfor %}
+      {% else %}
+        <div class="empty-box small"><p>No slots scheduled yet.</p></div>
+      {% endif %}
+    </div>
+
+  </div>
+</div>
+
+<style>
+/* ── Card ── */
+.ms-card { background:var(--white); border:1px solid var(--border); border-radius:var(--r-lg); padding:28px; margin-bottom:24px; box-shadow:var(--sh-sm); }
+.ms-card-head { display:flex; align-items:flex-start; justify-content:space-between; flex-wrap:wrap; gap:12px; margin-bottom:22px; }
+.ms-card-title { font-size:17px; font-weight:700; color:var(--dark); }
+.ms-card-sub   { font-size:13px; color:var(--soft); margin-top:4px; }
+.ms-head-actions { display:flex; gap:8px; }
+
+/* ── View toggle ── */
+.view-toggle-btn { padding:7px 14px; border:1.5px solid var(--border); background:var(--white); border-radius:var(--r-sm); font-size:13px; font-weight:500; cursor:pointer; font-family:var(--font); color:var(--soft); transition:all .15s; }
+.view-toggle-btn.active { background:var(--blue); color:var(--white); border-color:var(--blue); }
+
+/* ── Schedule full week bar ── */
+.schedule-week-bar { display:flex; align-items:center; gap:14px; flex-wrap:wrap; background:linear-gradient(90deg,#eff6ff,#f0fdf4); border:1px solid #bfdbfe; border-radius:var(--r-md); padding:14px 18px; margin-bottom:22px; }
+.swb-label { font-size:14px; font-weight:700; color:#1d4ed8; white-space:nowrap; }
+.swb-form  { display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+.swb-field-label { font-size:13px; color:var(--soft); }
+.swb-date  { width:160px !important; }
+
+/* ── Day tab bar ── */
+.day-tabbar { display:flex; gap:4px; background:var(--surface); border-radius:var(--r-md); padding:5px; margin-bottom:22px; flex-wrap:wrap; }
+.day-tab { position:relative; flex:1; min-width:60px; display:flex; flex-direction:column; align-items:center; gap:3px; padding:10px 6px 8px; border:none; background:transparent; border-radius:var(--r-sm); cursor:pointer; font-family:var(--font); transition:all .15s; color:var(--soft); }
+.day-tab:hover { background:var(--white); color:var(--dark); box-shadow:var(--sh-sm); }
+.day-tab.day-tab--active { background:var(--white); color:var(--blue); box-shadow:var(--sh-sm); font-weight:700; }
+.day-tab--today { color:var(--blue); }
+.day-short { font-size:13px; font-weight:600; }
+.day-count { font-size:11px; background:var(--border); color:var(--soft); border-radius:20px; padding:1px 7px; min-width:22px; text-align:center; }
+.day-tab.day-tab--active .day-count { background:var(--blue-lt); color:var(--blue); }
+.today-pip { position:absolute; top:6px; right:6px; width:6px; height:6px; background:var(--blue); border-radius:50%; }
+
+/* ── Day panel ── */
+.day-panel { display:none; }
+.day-panel.dp-visible { display:block; }
+.day-panel-bar { display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:12px; margin-bottom:18px; padding-bottom:14px; border-bottom:1px solid var(--border); }
+.day-panel-label { font-size:15px; font-weight:700; color:var(--dark); display:flex; align-items:center; gap:8px; }
+.today-badge { font-size:11px; font-weight:700; background:var(--blue-lt); color:var(--blue); padding:2px 10px; border-radius:20px; }
+.apply-form { display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+.apply-date-input { width:160px !important; }
+
+/* ── Slot cards ── */
+.slot-cards-grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(175px,1fr)); gap:14px; }
+.slot-card { border:1.5px solid var(--border); border-radius:var(--r-md); padding:14px; background:var(--white); transition:box-shadow .15s; position:relative; cursor:default; }
+.slot-card:hover { box-shadow:var(--sh-md); }
+.slot-card--inactive { opacity:.55; background:var(--surface); }
+.slot-card--add { border-style:dashed; border-color:#c7d2fe; background:#f8f9ff; cursor:default; }
+.slot-card[draggable="true"] { cursor:grab; }
+.slot-card.dragging { opacity:.4; }
+
+.sc-drag-handle { position:absolute; top:8px; right:8px; font-size:16px; color:#d1d5db; cursor:grab; line-height:1; }
+.sc-times { display:flex; align-items:center; gap:6px; margin-bottom:4px; margin-top:4px; }
+.sc-dot { width:8px; height:8px; border-radius:50%; flex-shrink:0; }
+.sc-start,.sc-end { font-size:13px; font-weight:700; color:var(--dark); }
+.sc-arrow { color:var(--soft); font-size:11px; }
+.sc-name { font-size:12px; color:var(--soft); margin-bottom:6px; }
+.sc-inactive-tag { display:inline-block; font-size:10px; font-weight:600; background:#fef3c7; color:#92400e; padding:1px 8px; border-radius:20px; margin-bottom:4px; }
+.sc-actions { display:flex; gap:6px; margin-top:10px; padding-top:10px; border-top:1px solid var(--border); }
+.sc-btn-edit { font-size:12px; color:var(--blue); background:var(--blue-lt); border:none; padding:4px 10px; border-radius:var(--r-sm); font-family:var(--font); text-decoration:none; cursor:pointer; }
+.sc-btn-del  { font-size:12px; color:var(--red); background:var(--red-lt); border:none; padding:4px 10px; border-radius:var(--r-sm); font-family:var(--font); cursor:pointer; }
+.sc-edit-form { }
+.sc-edit-row { display:flex; flex-direction:column; gap:8px; }
+.sc-field { display:flex; flex-direction:column; gap:3px; }
+.sc-label { font-size:10px; font-weight:700; color:var(--soft); text-transform:uppercase; letter-spacing:.5px; }
+.sc-input { font-size:13px !important; padding:6px 10px !important; }
+.sc-edit-actions { display:flex; gap:8px; margin-top:10px; }
+.sc-add-title { font-size:13px; font-weight:700; color:#6366f1; margin-bottom:10px; }
+.sc-add-fields { display:flex; flex-direction:column; gap:8px; }
+.sc-color-row { display:flex; align-items:center; gap:8px; margin-top:6px; flex-wrap:wrap; }
+
+/* ── Color picker ── */
+.color-picker { display:flex; gap:5px; flex-wrap:wrap; }
+.cp-dot { width:20px; height:20px; border-radius:50%; cursor:pointer; border:2px solid transparent; transition:transform .1s; }
+.cp-dot:hover { transform:scale(1.2); }
+.cp-dot--active { border-color: #fff; outline:2px solid #374151; }
+.color-swatch { display:inline-block; width:16px; height:16px; border-radius:50%; vertical-align:middle; }
+
+/* ── Toggle switch ── */
+.toggle-sw { position:relative; display:inline-block; width:36px; height:20px; }
+.toggle-sw input { opacity:0; width:0; height:0; }
+.toggle-track { position:absolute; inset:0; background:#d1d5db; border-radius:20px; cursor:pointer; transition:.2s; }
+.toggle-track::before { content:''; position:absolute; width:14px; height:14px; left:3px; top:3px; background:white; border-radius:50%; transition:.2s; }
+.toggle-sw input:checked + .toggle-track { background:var(--blue); }
+.toggle-sw input:checked + .toggle-track::before { transform:translateX(16px); }
+
+/* ── Week Grid View ── */
+.week-grid { display:grid; grid-template-columns:repeat(7,1fr); gap:10px; overflow-x:auto; }
+.wg-col { border:1.5px solid var(--border); border-radius:var(--r-md); overflow:hidden; min-width:110px; }
+.wg-col--today { border-color:var(--blue); }
+.wg-col-head { background:var(--surface); padding:10px 12px; display:flex; flex-direction:column; align-items:center; gap:4px; border-bottom:1px solid var(--border); }
+.wg-day-name { font-size:13px; font-weight:700; color:var(--dark); }
+.wg-count { font-size:11px; background:var(--border); color:var(--soft); border-radius:20px; padding:1px 8px; }
+.wg-col--today .wg-col-head { background:var(--blue-lt); }
+.wg-col--today .wg-day-name { color:var(--blue); }
+.wg-slots { padding:10px; display:flex; flex-direction:column; gap:6px; min-height:80px; }
+.wg-slot { padding:7px 10px; border-radius:var(--r-sm); }
+.wg-slot--inactive { opacity:.5; }
+.wg-slot-time { font-size:11px; font-weight:700; color:var(--dark); }
+.wg-slot-name { font-size:11px; color:var(--soft); }
+.wg-empty { font-size:12px; color:#d1d5db; text-align:center; padding:12px 0; }
+.wg-edit-link { display:block; text-align:center; font-size:12px; color:var(--blue); padding:8px; border-top:1px solid var(--border); background:var(--surface); }
+.wg-edit-link:hover { background:var(--blue-lt); }
+
+/* ── Heatmap ── */
+.heatmap-wrap { overflow-x:auto; }
+.hm-day-labels { display:flex; flex-direction:column; gap:2px; float:left; margin-right:6px; }
+.hm-day-labels span { font-size:10px; color:var(--soft); height:14px; line-height:14px; }
+.hm-grid { display:flex; gap:3px; }
+.hm-week { display:flex; flex-direction:column; gap:3px; }
+.hm-cell { width:14px; height:14px; border-radius:2px; cursor:default; transition:transform .1s; }
+.hm-cell:hover { transform:scale(1.4); z-index:10; position:relative; }
+.hm-0   { background:#ebedf0; }
+.hm-1   { background:#9be9a8; }
+.hm-34  { background:#40c463; }
+.hm-67  { background:#30a14e; }
+.hm-100 { background:#216e39; }
+.hm-past { opacity:.6; }
+.hm-today { outline:2px solid var(--blue); border-radius:3px; }
+.hm-legend { display:flex; align-items:center; gap:4px; margin-top:10px; font-size:11px; color:var(--soft); clear:both; }
+.hm-leg-cell { width:12px; height:12px; border-radius:2px; }
+
+/* ── Template cards (section 3) ── */
+.tmpl-grid { display:flex; flex-wrap:wrap; gap:10px; margin-top:6px; }
+.tmpl-card { display:flex; cursor:pointer; }
+.tmpl-card input[type="checkbox"] { display:none; }
+.tmpl-card-inner { display:flex; flex-direction:column; padding:10px 16px; border:2px solid var(--border); border-radius:var(--r-md); background:var(--white); transition:all .15s; min-width:140px; }
+.tmpl-card input:checked + .tmpl-card-inner { border-color:var(--blue); background:var(--blue-lt); }
+.tmpl-card-name { font-weight:600; font-size:14px; color:var(--dark); }
+.tmpl-card-time { font-size:12px; color:var(--soft); margin-top:2px; }
+.tmpl-card input:checked + .tmpl-card-inner .tmpl-card-name { color:var(--blue); }
+
+/* ── Misc ── */
+.inline-add-form { background:var(--surface); border:1px solid var(--border); border-radius:var(--r-md); padding:16px; }
+</style>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.2/Sortable.min.js"></script>
+<script>
+const REORDER_URL = "{% url 'reorder_weekly_slots' %}";
+const CSRF = "{{ csrf_token }}";
+const todayStr = new Date().toISOString().split('T')[0];
+
+// Min dates
+document.querySelectorAll('.apply-date-input, #sched-date').forEach(el => el.min = todayStr);
+const wsi = document.getElementById('week-start-input');
+if (wsi) wsi.min = todayStr;
+
+// ── Day tab switching ──
+function switchDay(n) {
+  document.querySelectorAll('.day-panel').forEach(p => p.classList.remove('dp-visible'));
+  document.querySelectorAll('.day-tab').forEach(t => t.classList.remove('day-tab--active'));
+  const panel = document.getElementById('dpanel-' + n);
+  const tab   = document.getElementById('dtab-' + n);
+  if (panel) panel.classList.add('dp-visible');
+  if (tab)   tab.classList.add('day-tab--active');
+}
+
+// ── Tab / Grid view toggle ──
+function setView(v) {
+  document.getElementById('view-tabs').style.display = v === 'tabs' ? '' : 'none';
+  document.getElementById('view-grid').style.display = v === 'grid' ? '' : 'none';
+  document.getElementById('btn-tabs').classList.toggle('active', v === 'tabs');
+  document.getElementById('btn-grid').classList.toggle('active', v === 'grid');
+}
+
+// ── Color picker ──
+document.querySelectorAll('.color-picker').forEach(picker => {
+  const targetId = picker.dataset.target;
+  const input    = document.getElementById(targetId);
+  picker.querySelectorAll('.cp-dot').forEach(dot => {
+    dot.addEventListener('click', () => {
+      picker.querySelectorAll('.cp-dot').forEach(d => d.classList.remove('cp-dot--active'));
+      dot.classList.add('cp-dot--active');
+      if (input) input.value = dot.dataset.val;
+    });
+  });
+});
+
+// ── Drag-to-reorder (SortableJS) ──
+document.querySelectorAll('.slot-cards-grid').forEach(grid => {
+  const addCard = grid.querySelector('.slot-card--add');
+  Sortable.create(grid, {
+    animation: 150,
+    handle: '.sc-drag-handle',
+    filter: '.slot-card--add',
+    ghostClass: 'dragging',
+    onEnd: function () {
+      const ids = [...grid.querySelectorAll('.slot-card[data-id]')].map(c => c.dataset.id);
+      fetch(REORDER_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: 'csrfmiddlewaretoken=' + CSRF + '&order=' + encodeURIComponent(JSON.stringify(ids))
+      });
+    }
+  });
+});
+
+// ── Init: open today's tab or the tab of the slot being edited ──
+{% if edit_wid %}
+  {% for day_num, day_name, ws_list in days_with_slots %}
+    {% for ws in ws_list %}
+      {% if edit_wid == ws.id|stringformat:"s" %}switchDay({{ day_num }});{% endif %}
+    {% endfor %}
+  {% endfor %}
+{% else %}
+  switchDay({{ today_dow }});
+{% endif %}
+</script>
+{% endblock %}

@@ -1,0 +1,41 @@
+{% extends 'booking/base.html' %}
+{% block title %}Book Appointment — AppointEase{% endblock %}
+{% block content %}
+<div class="page-banner">
+  <div class="container">
+    <span class="eyebrow">Step 1 of 2</span>
+    <h1 class="page-h1">Choose a Time Slot</h1>
+    <p class="page-sub">All times shown in IST. Select a slot to proceed.</p>
+  </div>
+</div>
+<section class="section">
+  <div class="container">
+    {% if grouped_slots %}
+      {% for date, slots in grouped_slots.items %}
+      <div class="date-block">
+        <div class="date-block-header">
+          <span class="date-block-title">{{ date|date:"l, d F Y" }}</span>
+          <span class="date-block-count">{{ slots|length }} slot{{ slots|length|pluralize }}</span>
+        </div>
+        <div class="slots-grid">
+          {% for slot in slots %}
+          <a href="{% url 'book_appointment' slot.id %}" class="slot-tile">
+            <span class="slot-tile-time">{{ slot.start_time|time:"g:i A" }}</span>
+            <span class="slot-tile-to">to {{ slot.end_time|time:"g:i A" }}</span>
+            <span class="slot-tile-badge">Available</span>
+          </a>
+          {% endfor %}
+        </div>
+      </div>
+      {% endfor %}
+    {% else %}
+      <div class="empty-box">
+        <div class="empty-icon">📅</div>
+        <h3>No Slots Available</h3>
+        <p>Check back later or contact us directly.</p>
+        <a href="{% url 'home' %}" class="btn btn-outline">Back to Home</a>
+      </div>
+    {% endif %}
+  </div>
+</section>
+{% endblock %}

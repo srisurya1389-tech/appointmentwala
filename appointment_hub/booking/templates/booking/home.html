@@ -1,0 +1,118 @@
+{% extends 'booking/base.html' %}
+{% block title %}AppointEase — Book Your Appointment{% endblock %}
+{% block content %}
+
+<!-- HERO -->
+<section class="hero">
+  <div class="container">
+    <div class="hero-grid">
+      <div class="hero-left">
+        <span class="eyebrow">Professional Appointment Booking</span>
+        <h1 class="hero-h1">Your Time,<br><span class="text-blue">Perfectly Scheduled</span></h1>
+        <p class="hero-sub">Book a one-on-one consultation in minutes. Choose a time that works for you — no phone calls, no waiting.</p>
+        <div class="hero-btns">
+          <a href="{% url 'booking_calendar' %}" class="btn btn-primary btn-lg">📅 Book Appointment</a>
+          <a href="#about" class="btn btn-outline btn-lg">Learn More</a>
+        </div>
+        {% if available_count %}
+        <p class="hero-avail"><span class="green-dot"></span> {{ available_count }} slot{{ available_count|pluralize }} available this week</p>
+        {% endif %}
+        <p style="margin-top:14px;font-size:14px"><a href="{% url 'my_appointments' %}" style="color:var(--blue);font-weight:600">Already booked? View / cancel your appointment →</a></p>
+      </div>
+      <div class="hero-right">
+        <div class="booking-preview-card">
+          <div class="bpc-top">
+            <div class="bpc-dots"><span></span><span></span><span></span></div>
+          </div>
+          <p class="bpc-eyebrow">Next Available</p>
+          <p class="bpc-heading">Today &amp; Tomorrow</p>
+          <div class="bpc-slots">
+            <span class="bpc-slot">9:00 AM</span>
+            <span class="bpc-slot">11:30 AM</span>
+            <span class="bpc-slot active">2:00 PM</span>
+            <span class="bpc-slot">4:30 PM</span>
+          </div>
+          <a href="{% url 'booking_calendar' %}" class="bpc-cta">Choose a slot →</a>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- STATS -->
+<div class="stats-strip">
+  <div class="container">
+    <div class="stats-row">
+      <div class="stat-item"><strong>500+</strong><span>Appointments Done</span></div>
+      <div class="stat-item"><strong>98%</strong><span>Client Satisfaction</span></div>
+      <div class="stat-item"><strong>5 min</strong><span>To Book Online</span></div>
+      <div class="stat-item"><strong>24/7</strong><span>Online Booking</span></div>
+    </div>
+  </div>
+</div>
+
+<!-- PROVIDER PROFILE (Practo style) -->
+<section class="section" id="about">
+  <div class="container">
+    <div class="doctor-card-big">
+      <div class="dcb-left">
+        <div class="dcb-avatar">{% if profile %}{{ profile.name|slice:":2"|upper }}{% else %}PS{% endif %}</div>
+      </div>
+      <div class="dcb-right">
+        <h2 class="dcb-name">{% if profile %}{{ profile.name }}{% else %}Dr. Priya Sharma{% endif %}</h2>
+        <p class="dcb-title">{% if profile %}{{ profile.title }}{% else %}General Physician{% endif %}</p>
+        <p class="dcb-spec">{% if profile %}{{ profile.specialization }}{% else %}General Medicine{% endif %}</p>
+        <div class="dcb-tags">
+          {% if profile and profile.years_experience %}<span class="tag">🏅 {{ profile.years_experience }} yrs exp.</span>{% endif %}
+          {% if profile and profile.consultation_fee %}<span class="tag">💰 ₹{{ profile.consultation_fee }} consult fee</span>{% endif %}
+          {% if profile and profile.languages %}<span class="tag">🗣 {{ profile.languages }}</span>{% endif %}
+        </div>
+        {% if profile and profile.bio %}
+        <p class="dcb-bio">{{ profile.bio }}</p>
+        {% endif %}
+        <div class="dcb-contact">
+          {% if profile and profile.phone %}<span>📞 {{ profile.phone }}</span>{% endif %}
+          {% if profile and profile.location %}<span>📍 {{ profile.location }}</span>{% endif %}
+        </div>
+        <a href="{% url 'booking_calendar' %}" class="btn btn-primary">Book Appointment</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- SERVICES -->
+<section class="section bg-light">
+  <div class="container">
+    <div class="section-hdr">
+      <span class="eyebrow">Services</span>
+      <h2 class="section-h2">What I Offer</h2>
+    </div>
+    <div class="services-row">
+      <div class="svc-card"><div class="svc-icon">🩺</div><h3>General Consultation</h3><p>Comprehensive health checkup and general medical advice.</p><span class="svc-tag">30 mins</span></div>
+      <div class="svc-card featured"><div class="svc-ribbon">Popular</div><div class="svc-icon">💼</div><h3>Full Strategy Session</h3><p>In-depth 60-minute session with detailed advice and action plan.</p><span class="svc-tag">60 mins</span></div>
+      <div class="svc-card"><div class="svc-icon">🔄</div><h3>Follow-Up Visit</h3><p>Review your progress and adjust your treatment or plan.</p><span class="svc-tag">20 mins</span></div>
+    </div>
+  </div>
+</section>
+
+<!-- HOW IT WORKS -->
+<section class="section">
+  <div class="container">
+    <div class="section-hdr">
+      <span class="eyebrow">Simple Process</span>
+      <h2 class="section-h2">How to Book in 3 Steps</h2>
+    </div>
+    <div class="steps-row">
+      <div class="step-box"><div class="step-num">1</div><h4>Pick a Slot</h4><p>Browse available dates and times on the calendar.</p></div>
+      <div class="step-arrow">→</div>
+      <div class="step-box"><div class="step-num">2</div><h4>Fill Details</h4><p>Enter your name, phone, email and reason for visit.</p></div>
+      <div class="step-arrow">→</div>
+      <div class="step-box"><div class="step-num">3</div><h4>Get Confirmed</h4><p>Instant confirmation. Show up at your time.</p></div>
+    </div>
+    <div style="text-align:center;margin-top:36px">
+      <a href="{% url 'booking_calendar' %}" class="btn btn-primary btn-lg">View Available Slots</a>
+    </div>
+  </div>
+</section>
+
+{% endblock %}

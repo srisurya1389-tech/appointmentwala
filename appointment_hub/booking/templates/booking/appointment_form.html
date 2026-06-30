@@ -1,0 +1,51 @@
+{% extends 'booking/base.html' %}
+{% block title %}Confirm Booking — AppointEase{% endblock %}
+{% block content %}
+<div class="page-banner">
+  <div class="container">
+    <span class="eyebrow">Step 2 of 2</span>
+    <h1 class="page-h1">Enter Your Details</h1>
+  </div>
+</div>
+<section class="section">
+  <div class="form-wrap">
+    <div class="slot-confirm-bar">
+      <span class="slot-confirm-icon">🗓️</span>
+      <div>
+        <strong>{{ slot.date|date:"l, d F Y" }}</strong>
+        <span>{{ slot.start_time|time:"g:i A" }} – {{ slot.end_time|time:"g:i A" }} IST</span>
+      </div>
+      <a href="{% url 'booking_calendar' %}" class="change-link">Change</a>
+    </div>
+    <form method="POST" class="appt-form" novalidate>
+      {% csrf_token %}
+      <div class="fld-group">
+        <label class="fld-label">Full Name <span class="req">*</span></label>
+        {{ form.client_name }}
+        {% if form.client_name.errors %}<p class="fld-err">{{ form.client_name.errors.0 }}</p>{% endif %}
+      </div>
+      <div class="fld-row">
+        <div class="fld-group">
+          <label class="fld-label">Email <span class="req">*</span></label>
+          {{ form.client_email }}
+          {% if form.client_email.errors %}<p class="fld-err">{{ form.client_email.errors.0 }}</p>{% endif %}
+        </div>
+        <div class="fld-group">
+          <label class="fld-label">Phone <span class="req">*</span></label>
+          {{ form.client_phone }}
+          {% if form.client_phone.errors %}<p class="fld-err">{{ form.client_phone.errors.0 }}</p>{% endif %}
+        </div>
+      </div>
+      <div class="fld-group">
+        <label class="fld-label">Reason / Message</label>
+        {{ form.message }}
+      </div>
+      <p class="privacy-note">🔒 Your information is private and only used for this appointment.</p>
+      <div class="form-footer">
+        <a href="{% url 'booking_calendar' %}" class="btn btn-outline">← Back</a>
+        <button type="submit" class="btn btn-primary btn-lg">Confirm Booking</button>
+      </div>
+    </form>
+  </div>
+</section>
+{% endblock %}

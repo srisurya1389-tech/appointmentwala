@@ -1,0 +1,22 @@
+{% extends 'booking/base.html' %}
+{% block title %}Booking Confirmed — AppointEase{% endblock %}
+{% block content %}
+<section class="section">
+  <div class="container" style="max-width:560px">
+    <div class="success-card">
+      <div class="success-icon">✅</div>
+      <h1>Appointment Booked!</h1>
+      <p>Thank you <strong>{{ appointment.client_name }}</strong>. Your appointment is confirmed.</p>
+      <div class="success-details">
+        <div class="sd-row"><span>Date</span><strong>{{ appointment.slot.date|date:"l, d F Y" }}</strong></div>
+        <div class="sd-row"><span>Time</span><strong>{{ appointment.slot.start_time|time:"g:i A" }} – {{ appointment.slot.end_time|time:"g:i A" }}</strong></div>
+        <div class="sd-row"><span>Email</span><strong>{{ appointment.client_email }}</strong></div>
+        <div class="sd-row"><span>Status</span><strong class="badge badge-pending">Pending Confirmation</strong></div>
+      </div>
+      <p style="font-size:14px;color:#6b7280;margin-bottom:24px">We'll contact you at <strong>{{ appointment.client_email }}</strong> shortly.</p>
+      <a href="{% url 'home' %}" class="btn btn-primary">Back to Home</a>
+      <a href="{% url 'my_appointments' %}?email={{ appointment.client_email|urlencode }}" class="btn btn-outline" style="margin-left:8px">View My Appointments</a>
+    </div>
+  </div>
+</section>
+{% endblock %}

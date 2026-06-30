@@ -1,0 +1,161 @@
+{% extends 'booking/base.html' %}
+{% block title %}Dashboard — AppointEase{% endblock %}
+{% block content %}
+
+<div class="dash-wrapper">
+
+  <!-- SIDEBAR -->
+  <aside class="dash-sidebar">
+    <div class="sidebar-brand"><span class="brand-dot"></span> AppointEase</div>
+    <nav class="sidebar-nav">
+      <a href="{% url 'dashboard' %}"    class="snav-item active">📊 Dashboard</a>
+      <a href="{% url 'manage_slots' %}" class="snav-item">🗓️ Manage Slots</a>
+      <a href="{% url 'settings' %}"     class="snav-item">⚙️ Settings</a>
+      <a href="{% url 'home' %}"         class="snav-item">🏠 View Site</a>
+    </nav>
+    <div class="sidebar-footer">
+      <form method="post" action="{% url 'logout' %}">
+        {% csrf_token %}
+        <button type="submit" class="snav-logout">← Logout</button>
+      </form>
+    </div>
+  </aside>
+
+  <!-- MAIN CONTENT -->
+  <div class="dash-main">
+
+    <!-- TOP BAR -->
+    <div class="dash-topbar">
+      <div>
+        <h1 class="dash-title">Dashboard</h1>
+        <p class="dash-subtitle">Welcome back, {{ user.username }} 👋</p>
+      </div>
+      <a href="{% url 'manage_slots' %}" class="btn btn-primary">+ Add Slot</a>
+    </div>
+
+    <!-- STAT CARDS -->
+    <div class="stat-cards">
+      <div class="stat-card blue">
+        <div class="sc-number">{{ stats.total }}</div>
+        <div class="sc-label">Total Appointments</div>
+        <div class="sc-icon">📋</div>
+      </div>
+      <div class="stat-card yellow">
+        <div class="sc-number">{{ stats.pending }}</div>
+        <div class="sc-label">Pending</div>
+        <div class="sc-icon">⏳</div>
+      </div>
+      <div class="stat-card green">
+        <div class="sc-number">{{ stats.confirmed }}</div>
+        <div class="sc-label">Confirmed</div>
+        <div class="sc-icon">✅</div>
+      </div>
+      <div class="stat-card red">
+        <div class="sc-number">{{ stats.cancelled }}</div>
+        <div class="sc-label">Cancelled</div>
+        <div class="sc-icon">❌</div>
+      </div>
+    </div>
+
+    <!-- TODAY HIGHLIGHT -->
+    {% if stats.today %}
+    <div class="today-banner">
+      📅 You have <strong>{{ stats.today }}</strong> appointment{{ stats.today|pluralize }} today.
+    </div>
+    {% endif %}
+
+    <!-- UPCOMING APPOINTMENTS TABLE -->
+    <div class="dash-card">
+      <div class="dash-card-header">
+        <h2 class="dash-card-title">Upcoming Appointments</h2>
+        <span class="dash-card-count">{{ upcoming.count }} total</span>
+      </div>
+      {% if upcoming %}
+      <div class="table-scroll">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Client</th>
+              <th>Contact</th>
+              <th>Date</th>
+              <th>Time</th>
+              <th>Notes</th>
+              <th>Status</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for appt in upcoming %}
+            <tr>
+              <td class="td-num">{{ forloop.counter }}</td>
+              <td>
+                <div class="client-name">{{ appt.client_name }}</div>
+              </td>
+              <td>
+                <div class="client-contact">{{ appt.client_email }}</div>
+                <div class="client-phone">{{ appt.client_phone }}</div>
+              </td>
+              <td><strong>{{ appt.slot.date|date:"d M Y" }}</strong></td>
+              <td>{{ appt.slot.start_time|time:"g:i A" }}</td>
+              <td class="td-notes">{{ appt.message|default:"—"|truncatechars:30 }}</td>
+              <td>
+                <span class="badge badge-{{ appt.status }}">{{ appt.get_status_display }}</span>
+              </td>
+              <td>
+                <form method="POST" action="{% url 'update_status' appt.id %}" class="status-form">
+                  {% csrf_token %}
+                  <select name="status" class="status-select">
+                    <option value="pending"   {% if appt.status == 'pending'   %}selected{% endif %}>Pending</option>
+                    <option value="confirmed" {% if appt.status == 'confirmed' %}selected{% endif %}>Confirmed</option>
+                    <option value="cancelled" {% if appt.status == 'cancelled' %}selected{% endif %}>Cancelled</option>
+                  </select>
+                  <button type="submit" class="btn-update">Save</button>
+                </form>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% else %}
+      <div class="empty-box small">
+        <p>📭 No upcoming appointments yet.</p>
+        <a href="{% url 'manage_slots' %}" class="btn btn-outline">Add Availability Slots</a>
+      </div>
+      {% endif %}
+    </div>
+
+    <!-- PAST APPOINTMENTS -->
+    {% if past %}
+    <div class="dash-card">
+      <div class="dash-card-header">
+        <h2 class="dash-card-title">Past Appointments</h2>
+        <span class="dash-card-count">{{ past.count }} total</span>
+      </div>
+      <div class="table-scroll">
+        <table class="data-table">
+          <thead>
+            <tr><th>#</th><th>Client</th><th>Contact</th><th>Date</th><th>Time</th><th>Status</th></tr>
+          </thead>
+          <tbody>
+            {% for appt in past %}
+            <tr class="row-past">
+              <td class="td-num">{{ forloop.counter }}</td>
+              <td><div class="client-name">{{ appt.client_name }}</div></td>
+              <td><div class="client-contact">{{ appt.client_email }}</div><div class="client-phone">{{ appt.client_phone }}</div></td>
+              <td>{{ appt.slot.date|date:"d M Y" }}</td>
+              <td>{{ appt.slot.start_time|time:"g:i A" }}</td>
+              <td><span class="badge badge-{{ appt.status }}">{{ appt.get_status_display }}</span></td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+    {% endif %}
+
+  </div><!-- /dash-main -->
+</div><!-- /dash-wrapper -->
+
+{% endblock %}
